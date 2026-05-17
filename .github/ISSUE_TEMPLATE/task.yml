@@ -1,0 +1,48 @@
+name: Task
+description: Plan or track a specific implementation
+
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should this change accomplish?
+      placeholder: Describe the intended outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is included and excluded?
+      placeholder: |
+        Included:
+        - 
+
+        Excluded:
+        -
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How do we know this is done?
+      placeholder: |
+        - [ ] 
+        - [ ] 
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Optional context, links, constraints, or follow-up ideas
+      placeholder: |
+        -
+    validations:
+      required: false
