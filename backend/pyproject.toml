@@ -23,7 +23,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["api", "agents", "connectors", "schemas", "store"]
+packages = ["api", "agents", "connectors", "schemas", "store", "feed"]
 
 [build-system]
 requires = ["hatchling"]
