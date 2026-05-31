@@ -12,9 +12,17 @@ class FirecrawlConnector(AbstractConnector):
         self.app = FirecrawlApp(api_key=api_key or os.getenv("FIRECRAWL_API_KEY"))
 
     def fetch_listing(self, url: str, page: int = 1) -> list[PostCandidate]:
-        result = self.app.scrape_url(url, formats=["markdown", "links"])
+        if page != 1:
+            raise NotImplementedError(
+                "FirecrawlConnector does not support pagination beyond page 1."
+            )
 
-        links = result.get("links", []) if isinstance(result, dict) else []
+        result = self.app.scrape_url(url, formats=["markdown", "links"])
+        links = (
+            result.get("links", [])
+            if isinstance(result, dict)
+            else (getattr(result, "links", None) or [])
+        )
         candidates = []
 
         for link in links:
@@ -33,21 +41,18 @@ class FirecrawlConnector(AbstractConnector):
         result = self.app.scrape_url(post.url, formats=["markdown"])
         if isinstance(result, dict):
             return result.get("markdown", "")
-        return ""
+        return getattr(result, "markdown", None) or ""
 
     def extract_post_id(self, url: str) -> str:
         parsed = urlparse(url)
 
-        # uid query param (e.g. ?uid=935227)
         params = parse_qs(parsed.query)
         if "uid" in params:
             return params["uid"][0]
 
-        # last path segment (e.g. /post/12345)
         path_parts = parsed.path.rstrip("/").split("/")
         last = path_parts[-1] if path_parts else ""
         if last.isdigit():
             return last
 
-        # SHA256 hash fallback
         return hashlib.sha256(url.encode()).hexdigest()[:16]
