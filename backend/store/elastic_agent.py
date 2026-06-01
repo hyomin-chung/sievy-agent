@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timezone
 
 from connectors.base import PostCandidate
@@ -5,7 +6,7 @@ from judge.judge_agent import JudgeResult
 from store.elastic_client import INDEX_NAME, ensure_index, get_elastic_client
 
 
-class PostStore:
+class ElasticAgent:
     def __init__(self):
         self.client = get_elastic_client()
         ensure_index(self.client)
@@ -47,6 +48,10 @@ class PostStore:
 
         self.client.index(
             index=INDEX_NAME,
-            id=f"{watch_id}_{post.post_id}",
+            id=self._make_doc_id(watch_id, post.post_id),
             document=doc,
         )
+
+    def _make_doc_id(self, watch_id: str, post_id: str) -> str:
+        raw = f"{watch_id}:{post_id}"
+        return hashlib.sha256(raw.encode()).hexdigest()

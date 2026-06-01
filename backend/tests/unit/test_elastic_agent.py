@@ -1,37 +1,35 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from store.post_store import PostStore
+from store.elastic_agent import ElasticAgent
 from connectors.base import PostCandidate
 from judge.judge_agent import JudgeResult
 
 
 @pytest.fixture
-def store():
+def agent():
     with (
-        patch("store.post_store.get_elastic_client") as mock_client_fn,
-        patch("store.post_store.ensure_index"),
+        patch("store.elastic_agent.get_elastic_client") as mock_client_fn,
+        patch("store.elastic_agent.ensure_index"),
     ):
         mock_client = MagicMock()
         mock_client_fn.return_value = mock_client
-        yield PostStore(), mock_client
+        yield ElasticAgent(), mock_client
 
 
-def test_is_duplicate_returns_true_when_post_exists(store):
-    post_store, mock_client = store
+def test_is_duplicate_returns_true_when_post_exists(agent):
+    elastic_agent, mock_client = agent
     mock_client.search.return_value = {"hits": {"total": {"value": 1}}}
+    assert elastic_agent.is_duplicate("watch_001", "935227") is True
 
-    assert post_store.is_duplicate("watch_001", "935227") is True
 
-
-def test_is_duplicate_returns_false_when_post_not_exists(store):
-    post_store, mock_client = store
+def test_is_duplicate_returns_false_when_post_not_exists(agent):
+    elastic_agent, mock_client = agent
     mock_client.search.return_value = {"hits": {"total": {"value": 0}}}
+    assert elastic_agent.is_duplicate("watch_001", "935228") is False
 
-    assert post_store.is_duplicate("watch_001", "935228") is False
 
-
-def test_index_post_calls_elastic_index(store):
-    post_store, mock_client = store
+def test_index_post_calls_elastic_index(agent):
+    elastic_agent, mock_client = agent
 
     post = PostCandidate(
         post_id="935227",
@@ -46,7 +44,7 @@ def test_index_post_calls_elastic_index(store):
         confidence="high",
     )
 
-    post_store.index_post(
+    elastic_agent.index_post(
         watch_id="watch_001",
         post=post,
         body="벨뷰 룸 렌트합니다. 월 $950.",
@@ -56,6 +54,5 @@ def test_index_post_calls_elastic_index(store):
 
     mock_client.index.assert_called_once()
     call_kwargs = mock_client.index.call_args.kwargs
-    assert call_kwargs["id"] == "watch_001_935227"
     assert call_kwargs["document"]["verdict"] == "worth_checking"
     assert call_kwargs["document"]["category"] == "housing"

@@ -3,7 +3,7 @@ from elasticsearch import Elasticsearch
 
 
 def get_elastic_client() -> Elasticsearch:
-    url = os.getenv("ELASTIC_URL", "http://localhost:9200")
+    url = os.getenv("ELASTIC_URL", "http://elastic:9200")
     api_key = os.getenv("ELASTIC_API_KEY")
 
     if api_key:
@@ -29,5 +29,10 @@ INDEX_MAPPINGS = {
 
 
 def ensure_index(client: Elasticsearch) -> None:
-    if not client.indices.exists(index=INDEX_NAME):
+    if client.indices.exists(index=INDEX_NAME):
+        return
+    try:
         client.indices.create(index=INDEX_NAME, mappings=INDEX_MAPPINGS)
+    except Exception:
+        if not client.indices.exists(index=INDEX_NAME):
+            raise
