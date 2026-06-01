@@ -9,6 +9,8 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      - ELASTIC_URL=http://elastic:9200
     depends_on:
       - elastic
     command: uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
