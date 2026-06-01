@@ -1,6 +1,7 @@
 from connectors.base import AbstractConnector, PostCandidate
+from config import config
 
-MAX_PAGES = 3
+MAX_PAGES = config.MAX_PAGES
 
 
 class FeedDetector:

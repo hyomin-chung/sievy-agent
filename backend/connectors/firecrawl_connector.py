@@ -38,7 +38,9 @@ class FirecrawlConnector(AbstractConnector):
         return candidates
 
     def fetch_detail(self, post: PostCandidate) -> str:
-        result = self.app.scrape_url(post.url, formats=["markdown"])
+        result = self.app.scrape_url(
+            post.url, formats=["markdown"], only_main_content=True
+        )
         if isinstance(result, dict):
             return result.get("markdown", "")
         return getattr(result, "markdown", None) or ""

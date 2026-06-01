@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from store.elastic_agent import ElasticAgent
+from store.elastic_store import ElasticStore
 from connectors.base import PostCandidate
 from judge.judge_agent import JudgeResult
 
@@ -8,12 +8,12 @@ from judge.judge_agent import JudgeResult
 @pytest.fixture
 def agent():
     with (
-        patch("store.elastic_agent.get_elastic_client") as mock_client_fn,
-        patch("store.elastic_agent.ensure_index"),
+        patch("store.elastic_store.get_elastic_client") as mock_client_fn,
+        patch("store.elastic_store.ensure_index"),
     ):
         mock_client = MagicMock()
         mock_client_fn.return_value = mock_client
-        yield ElasticAgent(), mock_client
+        yield ElasticStore(), mock_client
 
 
 def test_is_duplicate_returns_true_when_post_exists(agent):

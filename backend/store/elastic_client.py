@@ -1,10 +1,10 @@
-import os
 from elasticsearch import Elasticsearch
+from config import config
 
 
 def get_elastic_client() -> Elasticsearch:
-    url = os.getenv("ELASTIC_URL", "http://elastic:9200")
-    api_key = os.getenv("ELASTIC_API_KEY")
+    url = config.ELASTIC_URL
+    api_key = config.ELASTIC_API_KEY
 
     if api_key:
         return Elasticsearch(hosts=[url], api_key=api_key)

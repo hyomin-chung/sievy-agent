@@ -6,7 +6,7 @@ from judge.judge_agent import JudgeResult
 from store.elastic_client import INDEX_NAME, ensure_index, get_elastic_client
 
 
-class ElasticAgent:
+class ElasticStore:
     def __init__(self):
         self.client = get_elastic_client()
         ensure_index(self.client)
