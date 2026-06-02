@@ -1,7 +1,7 @@
 import hashlib
 from datetime import datetime, timezone
 from urllib.parse import urlsplit, urlunsplit
-
+from config import LISTING_LIMIT
 import httpx
 
 from connectors.base import AbstractConnector, PostCandidate
@@ -17,7 +17,7 @@ class RedditConnector(AbstractConnector):
             )
 
         api_url = self._to_json_url(url)
-        params = {"limit": 25, "raw_json": 1}
+        params = {"limit": LISTING_LIMIT, "raw_json": 1}
 
         response = httpx.get(api_url, headers=HEADERS, params=params, timeout=10)
         response.raise_for_status()

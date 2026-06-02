@@ -1,17 +1,12 @@
-import os
 from elasticsearch import Elasticsearch
+from config import ELASTIC_URL, ELASTIC_API_KEY, ELASTIC_INDEX_NAME
 
 
 def get_elastic_client() -> Elasticsearch:
-    url = os.getenv("ELASTIC_URL", "http://elastic:9200")
-    api_key = os.getenv("ELASTIC_API_KEY")
+    if ELASTIC_API_KEY:
+        return Elasticsearch(hosts=[ELASTIC_URL], api_key=ELASTIC_API_KEY)
+    return Elasticsearch(hosts=[ELASTIC_URL])
 
-    if api_key:
-        return Elasticsearch(hosts=[url], api_key=api_key)
-    return Elasticsearch(hosts=[url])
-
-
-INDEX_NAME = "sievy_posts"
 
 INDEX_MAPPINGS = {
     "properties": {
@@ -29,10 +24,10 @@ INDEX_MAPPINGS = {
 
 
 def ensure_index(client: Elasticsearch) -> None:
-    if client.indices.exists(index=INDEX_NAME):
+    if client.indices.exists(index=ELASTIC_INDEX_NAME):
         return
     try:
-        client.indices.create(index=INDEX_NAME, mappings=INDEX_MAPPINGS)
+        client.indices.create(index=ELASTIC_INDEX_NAME, mappings=INDEX_MAPPINGS)
     except Exception:
-        if not client.indices.exists(index=INDEX_NAME):
+        if not client.indices.exists(index=ELASTIC_INDEX_NAME):
             raise

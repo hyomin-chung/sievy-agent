@@ -24,6 +24,7 @@ testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["api", "agents", "connectors", "schemas", "store", "feed", "judge"]
+include = ["config.py"]
 
 [build-system]
 requires = ["hatchling"]

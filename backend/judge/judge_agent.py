@@ -1,7 +1,6 @@
 import json
-import os
 from dataclasses import dataclass, field
-
+from config import GOOGLE_API_KEY, GEMINI_MODEL
 from google import genai
 
 
@@ -70,7 +69,7 @@ class JudgeResult:
 
 class JudgeAgent:
     def __init__(self, api_key: str | None = None):
-        self.client = genai.Client(api_key=api_key or os.getenv("GOOGLE_API_KEY"))
+        self.client = genai.Client(api_key=api_key or GOOGLE_API_KEY)
 
     def judge(self, body: str, category: str, criteria: dict) -> JudgeResult:
         prompt_template = PROMPTS.get(category, HOUSING_PROMPT)
@@ -80,7 +79,7 @@ class JudgeAgent:
         )
 
         response = self.client.models.generate_content(
-            model="gemini-3.5-flash",
+            model=GEMINI_MODEL,
             contents=prompt,
         )
 
