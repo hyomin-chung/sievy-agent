@@ -19,7 +19,7 @@ MOCK_DETAIL_RESULT = {
 
 @pytest.fixture
 def connector():
-    with patch("connectors.firecrawl_connector.FirecrawlApp") as mock_app_class:
+    with patch("connectors.firecrawl_connector.Firecrawl") as mock_app_class:
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app
         yield FirecrawlConnector(api_key="fc-test-key"), mock_app
@@ -27,7 +27,7 @@ def connector():
 
 def test_fetch_listing_returns_post_candidates(connector):
     fc, mock_app = connector
-    mock_app.scrape_url.return_value = MOCK_LISTING_RESULT
+    mock_app.scrape.return_value = MOCK_LISTING_RESULT
 
     posts = fc.fetch_listing("https://kseattle.com/rentlodge/")
 
@@ -39,7 +39,7 @@ def test_fetch_listing_returns_post_candidates(connector):
 
 def test_fetch_detail_returns_markdown(connector):
     fc, mock_app = connector
-    mock_app.scrape_url.return_value = MOCK_DETAIL_RESULT
+    mock_app.scrape.return_value = MOCK_DETAIL_RESULT
 
     post = PostCandidate(
         post_id="935227",

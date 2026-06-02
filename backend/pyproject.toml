@@ -21,6 +21,10 @@ dev = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0", "pytest-cov>=5.0.0"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-m 'not integration'"
+markers = [
+    "integration: marks tests as integration tests requiring real API keys",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["api", "agents", "connectors", "schemas", "store", "feed", "judge"]
