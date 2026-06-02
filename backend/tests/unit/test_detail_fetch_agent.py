@@ -57,3 +57,49 @@ def test_fetch_body_returns_error_on_failure():
 
         assert "error" in result
         assert result["body"] == ""
+
+
+def test_read_image_returns_content():
+    with (
+        patch("agents.detail_fetch_agent.httpx.get") as mock_get,
+        patch("google.genai.Client") as mock_client_class,
+    ):
+        mock_response = MagicMock()
+        mock_response.content = b"image bytes"
+        mock_response.headers = {"content-type": "image/jpeg"}
+        mock_get.return_value = mock_response
+
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.models.generate_content.return_value = MagicMock(
+            text="월세 $950 벨뷰"
+        )
+
+        from agents.detail_fetch_agent import read_image
+
+        result = read_image("https://example.com/image.jpg")
+
+        assert result["content"] == "월세 $950 벨뷰"
+
+
+def test_fetch_attachment_returns_content():
+    with (
+        patch("agents.detail_fetch_agent.httpx.get") as mock_get,
+        patch("google.genai.Client") as mock_client_class,
+    ):
+        mock_response = MagicMock()
+        mock_response.content = b"pdf bytes"
+        mock_response.headers = {"content-type": "application/pdf"}
+        mock_get.return_value = mock_response
+
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.models.generate_content.return_value = MagicMock(
+            text="장학금 공고 내용"
+        )
+
+        from agents.detail_fetch_agent import fetch_attachment
+
+        result = fetch_attachment("https://example.com/doc.pdf")
+
+        assert result["content"] == "장학금 공고 내용"

@@ -1,12 +1,14 @@
 import asyncio
 import re
+import uuid
 import httpx
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
+from google import genai
 
-from config import GEMINI_MODEL
+from config import GEMINI_MODEL, GOOGLE_API_KEY
 from connectors.base import PostCandidate
 from connectors.firecrawl_connector import FirecrawlConnector
 
@@ -45,7 +47,7 @@ def fetch_images(body: str) -> dict:
     urls = []
     for pattern in patterns:
         urls.extend(re.findall(pattern, body))
-    return {"image_urls": list(set(urls))}
+    return {"image_urls": sorted(set(urls))}
 
 
 def read_image(image_url: str) -> dict:
@@ -58,9 +60,6 @@ def read_image(image_url: str) -> dict:
         dict with 'content' key containing extracted text from the image.
     """
     try:
-        from google import genai
-        from config import GOOGLE_API_KEY
-
         response = httpx.get(image_url, timeout=10)
         response.raise_for_status()
         image_data = response.content
@@ -89,9 +88,6 @@ def fetch_attachment(url: str) -> dict:
         dict with 'content' key containing extracted text from the attachment.
     """
     try:
-        from google import genai
-        from config import GOOGLE_API_KEY
-
         response = httpx.get(url, timeout=15)
         response.raise_for_status()
         file_data = response.content
@@ -145,10 +141,11 @@ class DetailFetchAgent:
         )
 
     async def run_async(self, post: PostCandidate) -> str:
+        session_id = f"session_{post.post_id}_{uuid.uuid4().hex[:8]}"
         session = await self.session_service.create_session(
             app_name=APP_NAME,
             user_id=USER_ID,
-            session_id=f"session_{post.post_id}",
+            session_id=session_id,
         )
 
         message = types.Content(
@@ -156,7 +153,7 @@ class DetailFetchAgent:
             parts=[types.Part(text=f"Fetch content from: {post.url}")],
         )
 
-        result = ""
+        parts = []
         async for event in self.runner.run_async(
             user_id=USER_ID,
             session_id=session.id,
@@ -165,9 +162,16 @@ class DetailFetchAgent:
             if event.is_final_response() and event.content:
                 for part in event.content.parts:
                     if part.text:
-                        result += part.text
+                        parts.append(part.text)
 
-        return result
+        return "\n".join(parts)
 
     def run(self, post: PostCandidate) -> str:
-        return asyncio.run(self.run_async(post))
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.run_async(post))
+        raise RuntimeError(
+            "DetailFetchAgent.run() cannot be called from a running event loop. "
+            "Use await run_async() instead."
+        )
