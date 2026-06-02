@@ -1,15 +1,14 @@
 import hashlib
-import os
 from urllib.parse import urlparse, parse_qs
 
 from firecrawl import FirecrawlApp
-
+from config import FIRECRAWL_API_KEY
 from connectors.base import AbstractConnector, PostCandidate
 
 
 class FirecrawlConnector(AbstractConnector):
     def __init__(self, api_key: str | None = None):
-        self.app = FirecrawlApp(api_key=api_key or os.getenv("FIRECRAWL_API_KEY"))
+        self.app = FirecrawlApp(api_key=api_key or FIRECRAWL_API_KEY)
 
     def fetch_listing(self, url: str, page: int = 1) -> list[PostCandidate]:
         if page != 1:

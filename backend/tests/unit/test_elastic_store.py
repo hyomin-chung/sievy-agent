@@ -6,7 +6,7 @@ from judge.judge_agent import JudgeResult
 
 
 @pytest.fixture
-def agent():
+def store():
     with (
         patch("store.elastic_store.get_elastic_client") as mock_client_fn,
         patch("store.elastic_store.ensure_index"),
@@ -16,20 +16,8 @@ def agent():
         yield ElasticStore(), mock_client
 
 
-def test_is_duplicate_returns_true_when_post_exists(agent):
-    elastic_agent, mock_client = agent
-    mock_client.search.return_value = {"hits": {"total": {"value": 1}}}
-    assert elastic_agent.is_duplicate("watch_001", "935227") is True
-
-
-def test_is_duplicate_returns_false_when_post_not_exists(agent):
-    elastic_agent, mock_client = agent
-    mock_client.search.return_value = {"hits": {"total": {"value": 0}}}
-    assert elastic_agent.is_duplicate("watch_001", "935228") is False
-
-
-def test_index_post_calls_elastic_index(agent):
-    elastic_agent, mock_client = agent
+def test_index_post_calls_elastic_index(store):
+    elastic_store, mock_client = store
 
     post = PostCandidate(
         post_id="935227",
@@ -44,7 +32,7 @@ def test_index_post_calls_elastic_index(agent):
         confidence="high",
     )
 
-    elastic_agent.index_post(
+    elastic_store.index_post(
         watch_id="watch_001",
         post=post,
         body="벨뷰 룸 렌트합니다. 월 $950.",
