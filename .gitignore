@@ -11,6 +11,7 @@ service-account.json
 # Node
 node_modules/
 dist/
+.pnpm-store/
 
 # Logs
 *.log
