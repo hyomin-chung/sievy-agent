@@ -1,6 +1,7 @@
+from typing import Any
+
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from pydantic import BaseModel
-from typing import Any
 
 from agents.pipeline import create_watch, scan
 from store.watch_store import WatchStore
@@ -23,12 +24,15 @@ class WatchResponse(BaseModel):
     baseline_post_ids: list[str]
 
 
-class ScanResponse(BaseModel):
-    watch_id: str
-    source_url: str
-    new_posts_found: int
-    alerts_created: int
-    errors: list[str]
+async def _run_scan(watch_id: str) -> None:
+    try:
+        await scan(watch_id)
+    except Exception as e:
+        print(f"Scan error for watch {watch_id}: {e}")
+
+
+def _get_watch_store() -> WatchStore:
+    return WatchStore()
 
 
 @router.post("", status_code=201)
@@ -56,7 +60,7 @@ async def create_watch_endpoint(
 async def list_watches_endpoint(
     x_user_id: str = Header(...),
 ) -> list[WatchResponse]:
-    watch_store = WatchStore()
+    watch_store = _get_watch_store()
     watches = watch_store.list_by_user(x_user_id)
     return [
         WatchResponse(
@@ -76,7 +80,7 @@ async def get_watch_endpoint(
     watch_id: str,
     x_user_id: str = Header(...),
 ) -> WatchResponse:
-    watch_store = WatchStore()
+    watch_store = _get_watch_store()
     watch = watch_store.get(watch_id)
     if not watch or watch.user_id != x_user_id:
         raise HTTPException(status_code=404, detail="Watch not found")
@@ -95,7 +99,7 @@ async def delete_watch_endpoint(
     watch_id: str,
     x_user_id: str = Header(...),
 ) -> None:
-    watch_store = WatchStore()
+    watch_store = _get_watch_store()
     watch = watch_store.get(watch_id)
     if not watch or watch.user_id != x_user_id:
         raise HTTPException(status_code=404, detail="Watch not found")
@@ -108,10 +112,10 @@ async def scan_endpoint(
     background_tasks: BackgroundTasks,
     x_user_id: str = Header(...),
 ) -> dict:
-    watch_store = WatchStore()
+    watch_store = _get_watch_store()
     watch = watch_store.get(watch_id)
     if not watch or watch.user_id != x_user_id:
         raise HTTPException(status_code=404, detail="Watch not found")
 
-    background_tasks.add_task(scan, watch_id)
+    background_tasks.add_task(_run_scan, watch_id)
     return {"status": "scan started", "watch_id": watch_id}
