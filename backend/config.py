@@ -18,10 +18,11 @@ ENV = os.getenv("ENV", "development")
 ELASTIC_URL = (
     os.getenv("ELASTIC_CLOUD_URL")
     if ENV == "production"
-    else os.getenv("ELASTIC_URL", "http://elastic:9200")
+    else os.getenv("ELASTIC_URL", "http://localhost:9200")
 )
 ELASTIC_API_KEY = os.getenv("ELASTIC_API_KEY")
 ELASTIC_INDEX_NAME = os.getenv("ELASTIC_INDEX_NAME", "sievy_posts")
+ELASTIC_MCP_URL = os.getenv("ELASTIC_MCP_URL", "http://elastic-mcp:8080/mcp")
 
 # Firecrawl
 FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")

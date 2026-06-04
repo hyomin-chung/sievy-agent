@@ -1,6 +1,4 @@
-import pytest
-from unittest.mock import MagicMock
-from feed.detail_fetcher import DetailFetcher
+from unittest.mock import MagicMock, patch
 from connectors.base import PostCandidate
 
 
@@ -12,44 +10,29 @@ def make_post(post_id: str) -> PostCandidate:
     )
 
 
-@pytest.fixture
-def fetcher():
-    return DetailFetcher()
+def test_fetch_post_content_returns_body():
+    with patch("feed.detail_fetcher.FirecrawlConnector") as mock_connector_class:
+        mock_connector = MagicMock()
+        mock_connector.fetch_detail.return_value = "Bellevue room $950/month"
+        mock_connector_class.return_value = mock_connector
+
+        from feed.detail_fetcher import fetch_post_content
+
+        post = make_post("001")
+        result = fetch_post_content(post)
+
+        assert "$950" in result
 
 
-def test_fetch_returns_post_body_tuples(fetcher):
-    connector = MagicMock()
-    connector.fetch_detail.side_effect = [
-        "Bellevue room $950/month available June 1",
-        "Redmond apartment $800/month",
-    ]
+def test_fetch_post_content_returns_empty_on_failure():
+    with patch("feed.detail_fetcher.FirecrawlConnector") as mock_connector_class:
+        mock_connector = MagicMock()
+        mock_connector.fetch_detail.return_value = ""
+        mock_connector_class.return_value = mock_connector
 
-    posts = [make_post("001"), make_post("002")]
-    results = fetcher.fetch(connector, posts)
+        from feed.detail_fetcher import fetch_post_content
 
-    assert len(results) == 2
-    assert results[0][0].post_id == "001"
-    assert "$950" in results[0][1]
-    assert results[1][0].post_id == "002"
-    assert "$800" in results[1][1]
+        post = make_post("001")
+        result = fetch_post_content(post)
 
-
-def test_fetch_skips_empty_body(fetcher):
-    connector = MagicMock()
-    connector.fetch_detail.side_effect = [
-        "Bellevue room $950/month",
-        "",
-        "   ",
-    ]
-
-    posts = [make_post("001"), make_post("002"), make_post("003")]
-    results = fetcher.fetch(connector, posts)
-
-    assert len(results) == 1
-    assert results[0][0].post_id == "001"
-
-
-def test_fetch_empty_posts(fetcher):
-    connector = MagicMock()
-    results = fetcher.fetch(connector, [])
-    assert results == []
+        assert result == ""

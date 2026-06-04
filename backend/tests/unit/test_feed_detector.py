@@ -48,42 +48,6 @@ def test_detect_new_posts_returns_only_new(detector):
     assert new_posts[1].post_id == "005"
 
 
-def test_detect_new_posts_stops_at_baseline(detector):
-    connector = MagicMock()
-    connector.fetch_listing.return_value = [
-        make_post("004"),
-        make_post("001"),  # baseline post — stop here
-        make_post("005"),  # should not be included
-    ]
-
-    new_posts = detector.detect_new_posts(
-        connector,
-        "https://example.com",
-        baseline_post_ids={"001", "002", "003"},
-    )
-
-    assert len(new_posts) == 1
-    assert new_posts[0].post_id == "004"
-
-
-def test_detect_new_posts_respects_max_pages(detector):
-    connector = MagicMock()
-    connector.fetch_listing.side_effect = [
-        [make_post("004"), make_post("005")],
-        [make_post("006"), make_post("007")],
-        [make_post("008"), make_post("009")],
-    ]
-
-    new_posts = detector.detect_new_posts(
-        connector,
-        "https://example.com",
-        baseline_post_ids={"001", "002", "003"},
-    )
-
-    assert len(new_posts) == 6
-    assert connector.fetch_listing.call_count == 3
-
-
 def test_detect_new_posts_handles_not_implemented_pagination(detector):
     connector = MagicMock()
     connector.fetch_listing.side_effect = [

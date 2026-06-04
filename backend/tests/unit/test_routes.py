@@ -104,11 +104,8 @@ def test_scan_endpoint(mock_watch):
     with (
         patch("api.routes.watches.WatchStore") as mock_store_class,
         patch("agents.pipeline.WatchStore") as mock_pipeline_store_class,
-        patch("agents.pipeline.AlertStore"),
-        patch("agents.pipeline.ElasticStore"),
         patch("agents.pipeline.FeedDetector") as mock_detector_class,
-        patch("agents.pipeline.JudgeAgent"),
-        patch("agents.pipeline.DetailFetchAgent"),
+        patch("agents.pipeline.ScanOrchestrator") as mock_orchestrator_class,
         patch("agents.pipeline.FirecrawlConnector"),
     ):
         mock_store = MagicMock()
@@ -122,6 +119,17 @@ def test_scan_endpoint(mock_watch):
         mock_detector = MagicMock()
         mock_detector.detect_new_posts.return_value = []
         mock_detector_class.return_value = mock_detector
+
+        from agents.scan_orchestrator import ScanResult
+
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.run = AsyncMock(
+            return_value=ScanResult(
+                watch_id="watch_001",
+                source_url="https://kseattle.com/rentlodge/",
+            )
+        )
+        mock_orchestrator_class.return_value = mock_orchestrator
 
         response = client.post(
             "/watches/watch_001/scan",
