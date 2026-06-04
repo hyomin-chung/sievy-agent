@@ -41,3 +41,45 @@ class ElasticStore:
     def _make_doc_id(self, watch_id: str, post_id: str) -> str:
         raw = f"{watch_id}:{post_id}"
         return hashlib.sha256(raw.encode()).hexdigest()
+
+    def search_by_post_id(self, post_id: str) -> dict | None:
+        result = self.client.search(
+            index=ELASTIC_INDEX_NAME,
+            query={"term": {"post_id": post_id}},
+            size=1,
+        )
+        hits = result["hits"]["hits"]
+        return hits[0]["_source"] if hits else None
+
+    def search_by_watch(self, watch_id: str, size: int = 20) -> list[dict]:
+        result = self.client.search(
+            index=ELASTIC_INDEX_NAME,
+            query={"term": {"watch_id": watch_id}},
+            sort=[{"crawled_at": {"order": "desc"}}],
+            size=size,
+        )
+        return [hit["_source"] for hit in result["hits"]["hits"]]
+
+    def index_post_content(
+        self,
+        watch_id: str,
+        post: PostCandidate,
+        body: str,
+        category: str,
+    ) -> None:
+        from datetime import datetime, timezone
+
+        doc = {
+            "post_id": post.post_id,
+            "watch_id": watch_id,
+            "source_url": post.url,
+            "title": post.title or "",
+            "body": body,
+            "category": category,
+            "crawled_at": datetime.now(tz=timezone.utc).isoformat(),
+        }
+        self.client.index(
+            index=ELASTIC_INDEX_NAME,
+            id=f"{watch_id}_{post.post_id}",
+            document=doc,
+        )

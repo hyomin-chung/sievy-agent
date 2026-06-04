@@ -48,10 +48,10 @@ async def test_scan_with_real_watch():
     """
     Verifies that scan() loads a real Watch from Firestore and runs
     the full pipeline end-to-end without errors.
-    Also verifies that processed posts are indexed in Elasticsearch.
+    ScanOrchestrator (ADK LlmAgent) fetches, indexes, judges posts.
     """
     from store.elastic_store import ElasticStore
-    from store.elastic_client import ELASTIC_INDEX_NAME
+    from config import ELASTIC_INDEX_NAME
 
     watch = await create_watch(
         user_id="integration_test_user",
@@ -71,7 +71,6 @@ async def test_scan_with_real_watch():
     assert result.watch_id == watch.watch_id
     assert result.errors == []
 
-    # Verify Elasticsearch indexing
     elastic_store = ElasticStore()
     es_result = elastic_store.client.search(
         index=ELASTIC_INDEX_NAME,

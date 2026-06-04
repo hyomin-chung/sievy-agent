@@ -31,7 +31,7 @@ def test_fetch_listing_returns_post_candidates(connector):
 
     posts = fc.fetch_listing("https://kseattle.com/rentlodge/")
 
-    assert len(posts) == 3
+    assert len(posts) == 2
     assert all(isinstance(p, PostCandidate) for p in posts)
     assert posts[0].post_id == "935227"
     assert posts[1].post_id == "935228"

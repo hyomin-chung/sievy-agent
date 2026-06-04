@@ -4,8 +4,15 @@ from config import ELASTIC_URL, ELASTIC_API_KEY, ELASTIC_INDEX_NAME
 
 def get_elastic_client() -> Elasticsearch:
     if ELASTIC_API_KEY:
-        return Elasticsearch(hosts=[ELASTIC_URL], api_key=ELASTIC_API_KEY)
-    return Elasticsearch(hosts=[ELASTIC_URL])
+        return Elasticsearch(
+            hosts=[ELASTIC_URL],
+            api_key=ELASTIC_API_KEY,
+            http_compress=True,
+        )
+    return Elasticsearch(
+        hosts=[ELASTIC_URL],
+        http_compress=True,
+    )
 
 
 INDEX_MAPPINGS = {

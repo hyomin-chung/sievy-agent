@@ -50,6 +50,16 @@ services:
     depends_on:
       - elastic
 
+  elastic-mcp:
+    image: docker.elastic.co/mcp/elasticsearch
+    command: http
+    ports:
+      - "8080:8080"
+    environment:
+      - ES_URL=http://elastic:9200
+    depends_on:
+      - elastic
+
 volumes:
   elastic_data:
   backend_venv:
