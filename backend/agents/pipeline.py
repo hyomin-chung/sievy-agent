@@ -58,7 +58,8 @@ async def scan(watch_id: str) -> ScanResult:
 
     result = await orchestrator.run(new_posts)
 
-    current_ids = list(baseline_post_ids) + [p.post_id for p in new_posts]
-    watch_store.update_baseline(watch_id, current_ids)
+    if not result.errors:
+        current_ids = list(baseline_post_ids) + [p.post_id for p in new_posts]
+        watch_store.update_baseline(watch_id, current_ids)
 
     return result

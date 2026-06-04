@@ -59,3 +59,27 @@ class ElasticStore:
             size=size,
         )
         return [hit["_source"] for hit in result["hits"]["hits"]]
+
+    def index_post_content(
+        self,
+        watch_id: str,
+        post: PostCandidate,
+        body: str,
+        category: str,
+    ) -> None:
+        from datetime import datetime, timezone
+
+        doc = {
+            "post_id": post.post_id,
+            "watch_id": watch_id,
+            "source_url": post.url,
+            "title": post.title or "",
+            "body": body,
+            "category": category,
+            "crawled_at": datetime.now(tz=timezone.utc).isoformat(),
+        }
+        self.client.index(
+            index=ELASTIC_INDEX_NAME,
+            id=f"{watch_id}_{post.post_id}",
+            document=doc,
+        )

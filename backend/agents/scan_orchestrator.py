@@ -8,7 +8,7 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseConnectionParams
 from google.genai import types
 
-from config import GEMINI_MODEL, ELASTIC_MCP_URL
+from config import GEMINI_MODEL, ELASTIC_MCP_URL, ELASTIC_INDEX_NAME
 from connectors.base import PostCandidate
 from feed.detail_fetcher import fetch_post_content
 from store.elastic_store import ElasticStore
@@ -145,7 +145,7 @@ New posts to process:
 For each post:
 1. Call fetch_and_index(post_id, post_url, title) to fetch content and store in Elasticsearch
 2. If status is "empty", skip to next post
-3. Use the Elasticsearch search tool to search the "sievy_posts" index for this post_id
+3. Use the Elasticsearch search tool to search the "{ELASTIC_INDEX_NAME}" index for this post_id
    and read its content (body field)
 4. Judge whether the content matches the watch criteria
 5. If verdict is "worth_checking" or "needs_checking":
