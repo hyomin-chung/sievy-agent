@@ -1,4 +1,5 @@
 from typing import Any
+import logging
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from pydantic import BaseModel
@@ -7,6 +8,8 @@ from agents.pipeline import create_watch, scan
 from store.watch_store import WatchStore
 
 router = APIRouter(prefix="/watches", tags=["watches"])
+
+logger = logging.getLogger(__name__)
 
 
 class CreateWatchRequest(BaseModel):
@@ -26,9 +29,10 @@ class WatchResponse(BaseModel):
 
 async def _run_scan(watch_id: str) -> None:
     try:
-        await scan(watch_id)
+        result = await scan(watch_id)
+        logger.info(f"Scan completed: {result}")
     except Exception as e:
-        print(f"Scan error for watch {watch_id}: {e}")
+        logger.error(f"Scan error for watch {watch_id}: {e}", exc_info=True)
 
 
 def _get_watch_store() -> WatchStore:

@@ -27,7 +27,6 @@ ELASTIC_INDEX_NAME = os.getenv("ELASTIC_INDEX_NAME", "sievy_posts")
 FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")
 
 # Feed
-MAX_PAGES = int(os.getenv("MAX_PAGES", "3"))
 LISTING_LIMIT = int(os.getenv("LISTING_LIMIT", "25"))
 
 # App
