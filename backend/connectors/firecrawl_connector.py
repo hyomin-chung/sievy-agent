@@ -5,6 +5,7 @@ from firecrawl import Firecrawl
 
 from config import FIRECRAWL_API_KEY
 from connectors.base import AbstractConnector, PostCandidate
+from urllib.parse import unquote
 
 
 class FirecrawlConnector(AbstractConnector):
@@ -23,10 +24,48 @@ class FirecrawlConnector(AbstractConnector):
             if isinstance(result, dict)
             else (getattr(result, "links", None) or [])
         )
+
+        parsed_source = urlparse(url)
+        source_path = unquote(parsed_source.path.rstrip("/"))
+        seen = set()
         candidates = []
 
+        id_params = ["uid", "id", "no", "idx", "seq", "article_id", "post_id", "num"]
+
         for link in links:
-            post_id = self.extract_post_id(link)
+            parsed = urlparse(link)
+
+            if parsed.netloc != parsed_source.netloc:
+                continue
+
+            link_path = unquote(parsed.path.rstrip("/"))
+
+            if not link_path.startswith(source_path):
+                continue
+
+            params = parse_qs(parsed.query)
+
+            if link_path == source_path:
+                matched_key = next((k for k in id_params if k in params), None)
+                if not matched_key:
+                    continue
+                post_id = params[matched_key][0]
+            else:
+                path_parts = link_path.split("/")
+                last = path_parts[-1] if path_parts else ""
+                if last.isdigit():
+                    post_id = last
+                else:
+                    matched_key = next((k for k in id_params if k in params), None)
+                    if matched_key:
+                        post_id = params[matched_key][0]
+                    else:
+                        continue
+
+            if post_id in seen:
+                continue
+            seen.add(post_id)
+
             candidates.append(
                 PostCandidate(
                     post_id=post_id,
@@ -45,14 +84,15 @@ class FirecrawlConnector(AbstractConnector):
 
     def extract_post_id(self, url: str) -> str:
         parsed = urlparse(url)
-
         params = parse_qs(parsed.query)
-        if "uid" in params:
-            return params["uid"][0]
+
+        id_params = ["uid", "id", "no", "idx", "seq", "article_id", "post_id", "num"]
+        for key in id_params:
+            if key in params:
+                return params[key][0]
 
         path_parts = parsed.path.rstrip("/").split("/")
-        last = path_parts[-1] if path_parts else ""
-        if last.isdigit():
-            return last
+        if path_parts and path_parts[-1].isdigit():
+            return path_parts[-1]
 
         return hashlib.sha256(url.encode()).hexdigest()[:16]
