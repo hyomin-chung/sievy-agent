@@ -41,3 +41,8 @@ class AlertStore:
                 "is_read": True,
             }
         )
+
+    def delete_by_watch(self, watch_id: str) -> None:
+        docs = self.db.collection(COLLECTION).where("watch_id", "==", watch_id).stream()
+        for doc in docs:
+            doc.reference.delete()

@@ -7,12 +7,17 @@ export interface Watch {
   category: string;
   criteria: Record<string, unknown>;
   baseline_post_ids: string[];
+  status: "active" | "paused";
+  created_at: string;
+  last_scanned_at: string | null;
+  note: string;
 }
 
 export interface CreateWatchPayload {
   source_url: string;
   category: string;
   criteria: Record<string, unknown>;
+  note: string;
 }
 
 export const watchesApi = {
@@ -28,4 +33,7 @@ export const watchesApi = {
 
   scan: (watchId: string) =>
     client.post(`/watches/${watchId}/scan`).then((r) => r.data),
+
+  updateStatus: (watchId: string, status: "active" | "paused") =>
+    client.patch(`/watches/${watchId}/status`, { status }).then((r) => r.data),
 };

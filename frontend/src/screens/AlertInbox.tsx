@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { alertsApi, type Alert } from "../api/alerts";
+import { useSearchParams } from "react-router-dom";
 
 const verdictConfig = {
   worth_checking: {
@@ -31,16 +32,18 @@ function timeAgo(dateStr: string): string {
 
 export default function AlertInbox() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const watchId = searchParams.get("watch_id") ?? undefined;
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [filter, setFilter] = useState<Filter>("All");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     alertsApi
-      .list()
+      .list(watchId)
       .then(setAlerts)
       .finally(() => setLoading(false));
-  }, []);
+  }, [watchId]);
 
   const filtered = alerts.filter((a) => {
     if (filter === "All") return true;

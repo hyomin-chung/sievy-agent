@@ -8,6 +8,8 @@ import WatchList from "./screens/WatchList";
 import CreateWatch from "./screens/CreateWatch";
 import AlertInbox from "./screens/AlertInbox";
 import AlertDetail from "./screens/AlertDetail";
+import WatchDetail from "./screens/WatchDetail";
+import WatchAlerts from "./screens/WatchAlerts";
 import type { ReactNode } from "react";
 
 function PrivateRoute({ children }: { children: ReactNode }) {
@@ -55,6 +57,22 @@ export default function App() {
           element={
             <PrivateRoute>
               <CreateWatch />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/watches/:watchId"
+          element={
+            <PrivateRoute>
+              <WatchDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/watches/:watchId/alerts"
+          element={
+            <PrivateRoute>
+              <WatchAlerts />
             </PrivateRoute>
           }
         />

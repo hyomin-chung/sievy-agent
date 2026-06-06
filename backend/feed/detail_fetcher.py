@@ -73,20 +73,4 @@ def fetch_attachment(url: str) -> str:
 
 
 def fetch_post_content(post: PostCandidate) -> str:
-    parts = []
-
-    body = fetch_body(post.url)
-    if body:
-        parts.append(body)
-
-    for image_url in extract_image_urls(body):
-        text = read_image(image_url)
-        if text:
-            parts.append(text)
-
-    for attachment_url in extract_attachment_urls(body):
-        text = fetch_attachment(attachment_url)
-        if text:
-            parts.append(text)
-
-    return "\n".join(parts)
+    return fetch_body(post.url)

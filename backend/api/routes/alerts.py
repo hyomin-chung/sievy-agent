@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel
 from typing import Any
 from datetime import datetime
@@ -82,3 +82,17 @@ async def mark_alert_read_endpoint(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     alert_store.mark_as_read(alert_id)
+
+
+@router.get("")
+async def list_alerts(
+    x_user_id: str = Header(...),
+    watch_id: str | None = Query(None),
+):
+    store = AlertStore()
+    if watch_id:
+        alerts = store.list_by_watch(watch_id)
+        alerts = [a for a in alerts if a.user_id == x_user_id]
+    else:
+        alerts = store.list_by_user(x_user_id)
+    return alerts

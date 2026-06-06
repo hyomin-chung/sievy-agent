@@ -17,12 +17,24 @@ async def create_watch(
     source_url: str,
     category: str,
     criteria: dict,
+    note: str = "",
 ) -> Watch:
     connector = _get_connector(source_url)
     feed_detector = FeedDetector()
     watch_store = WatchStore()
 
-    baseline_post_ids = list(feed_detector.create_baseline(connector, source_url))
+    post_url_pattern = {}
+    if isinstance(connector, FirecrawlConnector):
+        try:
+            post_url_pattern = connector.detect_post_url_pattern(source_url)
+        except Exception:
+            post_url_pattern = {}
+
+    baseline_post_ids = list(
+        feed_detector.create_baseline(
+            connector, source_url, url_pattern=post_url_pattern
+        )
+    )
 
     watch = Watch(
         user_id=user_id,
@@ -30,6 +42,8 @@ async def create_watch(
         category=category,
         criteria=criteria,
         baseline_post_ids=baseline_post_ids,
+        post_url_pattern=post_url_pattern,
+        note=note,
     )
     return watch_store.save(watch)
 
@@ -45,7 +59,10 @@ async def scan(watch_id: str) -> ScanResult:
     baseline_post_ids = set(watch.baseline_post_ids)
 
     new_posts = feed_detector.detect_new_posts(
-        connector, watch.source_url, baseline_post_ids
+        connector,
+        watch.source_url,
+        baseline_post_ids,
+        url_pattern=watch.post_url_pattern,
     )
 
     orchestrator = ScanOrchestrator(
