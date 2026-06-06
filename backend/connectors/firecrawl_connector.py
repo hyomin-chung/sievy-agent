@@ -87,11 +87,16 @@ Return ONLY the JSON object. No explanation, no markdown, no backticks.""",
         parsed_link = urlparse(link)
         parsed_source = urlparse(source_url)
         pattern_type = pattern.get("type")
+        params = parse_qs(parsed_link.query)
 
         if pattern_type == "utm_source":
-            params = parse_qs(parsed_link.query)
             value = pattern.get("value", "")
-            return params.get("utm_source", [""])[0] == value
+            campaign = pattern.get("campaign", "")
+            if params.get("utm_source", [""])[0] != value:
+                return False
+            if campaign and params.get("utm_campaign", [""])[0] != campaign:
+                return False
+            return True
 
         source_domain = parsed_source.netloc
         link_domain = parsed_link.netloc
@@ -101,7 +106,6 @@ Return ONLY the JSON object. No explanation, no markdown, no backticks.""",
 
         link_path = unquote(parsed_link.path)
         source_path = unquote(parsed_source.path.rstrip("/"))
-        params = parse_qs(parsed_link.query)
 
         if pattern_type == "query_param":
             key = pattern.get("key", "")
@@ -134,15 +138,6 @@ Return ONLY the JSON object. No explanation, no markdown, no backticks.""",
                 if idx + 1 < len(parts):
                     return bool(re.match(r"^[a-z0-9]{4,12}$", parts[idx + 1]))
             return False
-
-        elif pattern_type == "utm_source":
-            value = pattern.get("value", "")
-            campaign = pattern.get("campaign", "")
-            if params.get("utm_source", [""])[0] != value:
-                return False
-            if campaign and params.get("utm_campaign", [""])[0] != campaign:
-                return False
-            return True
 
         return False
 
