@@ -35,3 +35,9 @@ class WatchStore:
     def list_by_user(self, user_id: str) -> list[Watch]:
         docs = self.db.collection(COLLECTION).where("user_id", "==", user_id).stream()
         return [Watch.from_dict(doc.to_dict()) for doc in docs]
+
+    def update_status(self, watch_id: str, status: str) -> None:
+        self.db.collection(COLLECTION).document(watch_id).update({"status": status})
+
+    def delete(self, watch_id: str) -> None:
+        self.db.collection(COLLECTION).document(watch_id).delete()

@@ -13,6 +13,9 @@ class Watch:
     watch_id: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_scanned_at: datetime | None = None
+    status: str = "active"
+    post_url_pattern: dict = field(default_factory=dict)
+    note: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -23,7 +26,10 @@ class Watch:
             "criteria": self.criteria,
             "baseline_post_ids": self.baseline_post_ids,
             "created_at": self.created_at,
+            "status": self.status,
             "last_scanned_at": self.last_scanned_at,
+            "post_url_pattern": self.post_url_pattern,
+            "note": self.note,
         }
 
     @classmethod
@@ -37,4 +43,7 @@ class Watch:
             baseline_post_ids=data.get("baseline_post_ids", []),
             created_at=data.get("created_at", datetime.now(timezone.utc)),
             last_scanned_at=data.get("last_scanned_at"),
+            status=data.get("status", "active"),
+            post_url_pattern=data.get("post_url_pattern", {}),
+            note=data.get("note", ""),
         )

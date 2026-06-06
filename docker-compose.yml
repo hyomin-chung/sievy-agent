@@ -12,7 +12,8 @@ services:
     environment:
       - ELASTIC_URL=http://elastic:9200
     depends_on:
-      - elastic
+      elastic:
+        condition: service_healthy
     command: uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -40,6 +41,12 @@ services:
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
     volumes:
       - elastic_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   kibana:
     image: docker.elastic.co/kibana/kibana:9.0.0
@@ -57,8 +64,10 @@ services:
       - "8080:8080"
     environment:
       - ES_URL=http://elastic:9200
+      - MCP_API_KEY=sievy-dev-key
     depends_on:
-      - elastic
+      elastic:
+        condition: service_healthy
 
 volumes:
   elastic_data:

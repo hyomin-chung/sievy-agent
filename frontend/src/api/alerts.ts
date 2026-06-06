@@ -15,7 +15,10 @@ export interface Alert {
 }
 
 export const alertsApi = {
-  list: () => client.get<Alert[]>("/alerts").then((r) => r.data),
+  list: (watchId?: string) =>
+    client
+      .get<Alert[]>("/alerts", { params: watchId ? { watch_id: watchId } : {} })
+      .then((r) => r.data),
 
   get: (alertId: string) =>
     client.get<Alert>(`/alerts/${alertId}`).then((r) => r.data),

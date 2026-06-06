@@ -5,10 +5,18 @@ from dataclasses import dataclass, field
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseConnectionParams
+from google.adk.tools.mcp_tool.mcp_toolset import (
+    MCPToolset,
+    StreamableHTTPConnectionParams,
+)
 from google.genai import types
 
-from config import GEMINI_MODEL, ELASTIC_MCP_URL, ELASTIC_INDEX_NAME
+from config import (
+    ELASTIC_MCP_API_KEY,
+    GEMINI_MODEL,
+    ELASTIC_MCP_URL,
+    ELASTIC_INDEX_NAME,
+)
 from connectors.base import PostCandidate
 from feed.detail_fetcher import fetch_post_content
 from store.elastic_store import ElasticStore
@@ -119,8 +127,11 @@ class ScanOrchestrator:
             return self.result
 
         elastic_toolset = MCPToolset(
-            connection_params=SseConnectionParams(
+            connection_params=StreamableHTTPConnectionParams(
                 url=ELASTIC_MCP_URL,
+                headers={"Authorization": f"Bearer {ELASTIC_MCP_API_KEY}"}
+                if ELASTIC_MCP_API_KEY
+                else {},
             )
         )
 
@@ -137,7 +148,6 @@ You are Sievy's scan orchestrator. Process new posts and create alerts for match
 
 Watch criteria:
 {json.dumps(self.criteria, ensure_ascii=False)}
-Category: {self.category}
 
 New posts to process:
 {posts_json}
@@ -153,12 +163,11 @@ For each post:
 6. If verdict is "ignore", move to next post
 
 Verdict rules:
-- worth_checking: clearly matches all key criteria
-- needs_checking: partially matches or some criteria unclear
-- ignore: does not match
+- worth_checking: the post clearly satisfies ALL criteria specified. Every required field must be present in the content and match.
+- needs_checking: the post is relevant to the criteria but some information is missing, vague, or only partially matches.
+- ignore: the post has no meaningful relevance to any of the specified criteria.
 
-extracted_fields should contain relevant structured data from the post
-(e.g. for housing: location, rent, move_in_date, utilities_included)
+extracted_fields should contain relevant structured data extracted from the post content.
 
 Process all posts before finishing.
 """,
