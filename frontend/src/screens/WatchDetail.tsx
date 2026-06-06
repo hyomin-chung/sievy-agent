@@ -137,8 +137,26 @@ export default function WatchDetail() {
     setScanning(true);
     try {
       await watchesApi.scan(watchId);
-    } finally {
-      setTimeout(() => setScanning(false), 60000);
+      const beforeTime = watch?.last_scanned_at
+        ? new Date(watch.last_scanned_at).getTime()
+        : 0;
+      const poll = setInterval(async () => {
+        const updated = await watchesApi.get(watchId);
+        const updatedTime = updated.last_scanned_at
+          ? new Date(updated.last_scanned_at).getTime()
+          : 0;
+        if (updatedTime > beforeTime) {
+          setWatch(updated);
+          setScanning(false);
+          clearInterval(poll);
+        }
+      }, 5000);
+      setTimeout(() => {
+        clearInterval(poll);
+        setScanning(false);
+      }, 120000);
+    } catch {
+      setScanning(false);
     }
   };
 

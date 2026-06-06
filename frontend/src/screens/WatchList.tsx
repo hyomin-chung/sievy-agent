@@ -103,6 +103,13 @@ const getCategoryIcon = (category: string): ReactNode =>
 const getCategoryLabel = (category: string): string =>
   categoryLabels[category] ?? "Other";
 
+const sortByActivity = (watches: Watch[]): Watch[] =>
+  [...watches].sort((a, b) => {
+    const aTime = a.last_scanned_at ?? a.created_at ?? "";
+    const bTime = b.last_scanned_at ?? b.created_at ?? "";
+    return bTime > aTime ? 1 : -1;
+  });
+
 function WatchCard({
   watch,
   alertCount,
@@ -115,6 +122,9 @@ function WatchCard({
   scanning: boolean;
 }) {
   const navigate = useNavigate();
+  const criteriaFields = Object.entries(watch.criteria).filter(
+    ([key]) => key !== "description",
+  );
 
   return (
     <div className="bg-white rounded-2xl border border-[#e8eaf0] shadow-sm overflow-hidden">
@@ -173,11 +183,10 @@ function WatchCard({
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {Object.entries(watch.criteria)
-            .filter(([key]) => key !== "description")
-            .slice(0, 3)
-            .map(([key, val]) => (
+        {/* Criteria tags: only render when non-description fields exist */}
+        {criteriaFields.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {criteriaFields.map(([key, val]) => (
               <span
                 key={key}
                 className="text-xs bg-[#f5f6fa] text-[#6b7280] px-2.5 py-1 rounded-full border border-[#e8eaf0]"
@@ -185,7 +194,8 @@ function WatchCard({
                 {String(val)}
               </span>
             ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom area → WatchAlerts */}
@@ -239,13 +249,14 @@ export default function WatchList() {
   const [watches, setWatches] = useState<Watch[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [scanning, setScanning] = useState<string | null>(null);
+  const [scanningWatch, setScanningWatch] = useState<Watch | null>(null);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([watchesApi.list(), alertsApi.list()])
       .then(([w, a]) => {
-        setWatches(w);
+        setWatches(sortByActivity(w));
         setAlerts(a);
       })
       .finally(() => setLoading(false));
@@ -258,11 +269,46 @@ export default function WatchList() {
     alerts.filter((a) => a.watch_id === watchId && !a.is_read).length;
 
   const handleScan = async (watchId: string) => {
+    const target = watches.find((w) => w.watch_id === watchId);
+    if (!target) return;
     setScanning(watchId);
+    setScanningWatch(target);
     try {
       await watchesApi.scan(watchId);
-    } finally {
-      setTimeout(() => setScanning(null), 3000);
+      const beforeTime = target.last_scanned_at
+        ? new Date(target.last_scanned_at).getTime()
+        : 0;
+      const poll = setInterval(async () => {
+        try {
+          const updated = await watchesApi.get(watchId);
+          const updatedTime = updated.last_scanned_at
+            ? new Date(updated.last_scanned_at).getTime()
+            : 0;
+          if (updatedTime > beforeTime) {
+            setWatches((prev) =>
+              sortByActivity([
+                updated,
+                ...prev.filter((w) => w.watch_id !== watchId),
+              ]),
+            );
+            setScanning(null);
+            setScanningWatch(null);
+            clearInterval(poll);
+          }
+        } catch {
+          clearInterval(poll);
+          setScanning(null);
+          setScanningWatch(null);
+        }
+      }, 5000);
+      setTimeout(() => {
+        clearInterval(poll);
+        setScanning(null);
+        setScanningWatch(null);
+      }, 120000);
+    } catch {
+      setScanning(null);
+      setScanningWatch(null);
     }
   };
 
@@ -272,6 +318,30 @@ export default function WatchList() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />
+
+      {/* Scan loading modal */}
+      {scanningWatch && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl px-8 py-7 flex flex-col items-center gap-4 shadow-xl mx-5">
+            <div className="w-10 h-10 border-2 border-[#1a1f4e] border-t-transparent rounded-full animate-spin" />
+            <div className="text-center">
+              <p className="font-semibold text-[#0f1230]">Scanning...</p>
+              <p className="text-[#6b7280] text-xs mt-1">
+                Reading new posts and checking your criteria.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setScanning(null);
+                setScanningWatch(null);
+              }}
+              className="text-xs text-[#9ca3af] mt-1"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="px-5 pt-14 pb-4">

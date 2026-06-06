@@ -1,6 +1,7 @@
 import json
 import uuid
 from dataclasses import dataclass, field
+import asyncio
 
 from google.adk.agents import Agent
 from google.adk.runners import Runner
@@ -126,6 +127,19 @@ class ScanOrchestrator:
         if not new_posts:
             return self.result
 
+        async def fetch_one(post: PostCandidate):
+            return await asyncio.to_thread(
+                self.fetch_and_index, post.post_id, post.url, post.title
+            )
+
+        results = await asyncio.gather(*[fetch_one(p) for p in new_posts])
+        indexed = [
+            p for p, r in zip(new_posts, results) if r.get("status") == "indexed"
+        ]
+
+        if not indexed:
+            return self.result
+
         elastic_toolset = MCPToolset(
             connection_params=StreamableHTTPConnectionParams(
                 url=ELASTIC_MCP_URL,
@@ -135,44 +149,52 @@ class ScanOrchestrator:
             )
         )
 
-        posts_json = json.dumps(
-            [{"post_id": p.post_id, "url": p.url, "title": p.title} for p in new_posts],
-            ensure_ascii=False,
-        )
+        criteria_keywords = " ".join(str(v) for v in self.criteria.values() if v)
 
         agent = Agent(
             name="scan_orchestrator",
             model=GEMINI_MODEL,
             instruction=f"""
-You are Sievy's scan orchestrator. Process new posts and create alerts for matching ones.
+    You are Sievy's scan orchestrator.
+    {len(indexed)} posts have been indexed into Elasticsearch index "{ELASTIC_INDEX_NAME}".
 
-Watch criteria:
-{json.dumps(self.criteria, ensure_ascii=False)}
+    Watch criteria:
+    {json.dumps(self.criteria, ensure_ascii=False)}
 
-New posts to process:
-{posts_json}
+    STEP 1: Call the Elasticsearch "search" tool ONCE with these parameters:
+    - index_pattern: "{ELASTIC_INDEX_NAME}"
+    - query (use this exact DSL):
+    {{
+    "query": {{
+        "bool": {{
+        "filter": [{{"term": {{"watch_id": "{self.watch_id}"}}}}],
+        "should": [{{"match": {{"body": "{criteria_keywords}"}}}}],
+        "minimum_should_match": 1
+        }}
+    }},
+    "size": 20,
+    "_source": ["post_id", "post_url", "body"]
+    }}
 
-For each post:
-1. Call fetch_and_index(post_id, post_url, title) to fetch content and store in Elasticsearch
-2. If status is "empty", skip to next post
-3. Use the Elasticsearch search tool to search the "{ELASTIC_INDEX_NAME}" index for this post_id
-   and read its content (body field)
-4. Judge whether the content matches the watch criteria
-5. If verdict is "worth_checking" or "needs_checking":
-   Call create_alert(post_id, post_url, title, verdict, extracted_fields, summary)
-6. If verdict is "ignore", move to next post
+    Do NOT modify watch_id or index_pattern.
+    Do NOT call the search tool more than once.
 
-Verdict rules:
-- worth_checking: the post clearly satisfies ALL criteria specified. Every required field must be present in the content and match.
-- needs_checking: the post is relevant to the criteria but some information is missing, vague, or only partially matches.
-- ignore: the post has no meaningful relevance to any of the specified criteria.
+    STEP 2: For each document returned from STEP 1:
+    Read the "body" field and judge it against the watch criteria above.
+    - worth_checking: ALL key criteria clearly present and matching in the content
+    - needs_checking: related to the criteria but some information is missing or unclear
+    - ignore: completely unrelated to the criteria
 
-extracted_fields should contain relevant structured data extracted from the post content.
+    STEP 3: For worth_checking and needs_checking ONLY:
+    Call create_alert(post_id, post_url, title, verdict, extracted_fields, summary)
+    - title: short title of the post derived from the body
+    - extracted_fields: dict of criteria-relevant fields found in the body
+    - summary: one sentence summary of why it matches
 
-Process all posts before finishing.
-""",
+    Do NOT call fetch_and_index. It is already done.
+    Do NOT call the search tool again after STEP 1.
+    """,
             tools=[
-                self.fetch_and_index,
                 self.create_alert,
                 elastic_toolset,
             ],
@@ -193,7 +215,7 @@ Process all posts before finishing.
 
         message = types.Content(
             role="user",
-            parts=[types.Part(text="Start processing the new posts.")],
+            parts=[types.Part(text="Start processing.")],
         )
 
         try:

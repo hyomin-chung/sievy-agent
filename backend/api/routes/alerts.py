@@ -76,3 +76,16 @@ async def mark_alert_read_endpoint(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     store.mark_as_read(alert_id)
+
+
+@router.delete("/{alert_id}", status_code=204)
+async def delete_alert_endpoint(
+    alert_id: str,
+    x_user_id: str = Header(...),
+) -> None:
+    store = AlertStore()
+    alerts = store.list_by_user(x_user_id)
+    alert = next((a for a in alerts if a.alert_id == alert_id), None)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    store.delete(alert_id)

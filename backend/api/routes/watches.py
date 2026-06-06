@@ -80,6 +80,7 @@ async def list_watches_endpoint(
     x_user_id: str = Header(...),
 ) -> list[WatchResponse]:
     watches = _get_watch_store().list_by_user(x_user_id)
+    watches.sort(key=lambda w: w.last_scanned_at or w.created_at, reverse=True)
     return [_to_response(w) for w in watches]
 
 

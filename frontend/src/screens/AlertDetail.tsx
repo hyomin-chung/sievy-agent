@@ -1,104 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { alertsApi, type Alert } from "../api/alerts";
-import type { ReactNode } from "react";
-
-const fieldIcons: Record<string, ReactNode> = {
-  location: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#6b7280"
-      strokeWidth="2"
-    >
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  ),
-  rent: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#6b7280"
-      strokeWidth="2"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  ),
-  move_in_date: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#6b7280"
-      strokeWidth="2"
-    >
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  ),
-  utilities_included: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#6b7280"
-      strokeWidth="2"
-    >
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  ),
-  deadline: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#6b7280"
-      strokeWidth="2"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  ),
-  eligibility: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#6b7280"
-      strokeWidth="2"
-    >
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  ),
-};
-
-const defaultIcon = (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#6b7280"
-    strokeWidth="2"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="8" x2="12" y2="12" />
-    <line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-);
 
 const verdictConfig = {
   worth_checking: {
@@ -124,7 +26,6 @@ function formatFieldKey(key: string): string {
 function formatFieldValue(val: unknown): string {
   if (val === null || val === undefined) return "—";
   if (typeof val === "boolean") return val ? "Yes" : "No";
-  if (typeof val === "number") return String(val);
   return String(val);
 }
 
@@ -133,6 +34,8 @@ export default function AlertDetail() {
   const navigate = useNavigate();
   const [alert, setAlert] = useState<Alert | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!alertId) return;
@@ -144,6 +47,17 @@ export default function AlertDetail() {
       })
       .finally(() => setLoading(false));
   }, [alertId]);
+
+  const handleDelete = async () => {
+    if (!alertId) return;
+    setDeleting(true);
+    try {
+      await alertsApi.delete(alertId);
+      navigate(-1);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -161,8 +75,10 @@ export default function AlertDetail() {
     );
   }
 
-  const vc = verdictConfig[alert.verdict] ?? verdictConfig.needs_checking;
-  const fields = Object.entries(alert.extracted_fields).filter(
+  const vc =
+    verdictConfig[alert.verdict as keyof typeof verdictConfig] ??
+    verdictConfig.needs_checking;
+  const fields = Object.entries(alert.extracted_fields ?? {}).filter(
     ([, v]) => v !== null && v !== undefined,
   );
 
@@ -172,7 +88,7 @@ export default function AlertDetail() {
       <div className="px-5 pt-14 pb-4 flex items-center gap-4">
         <button
           onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-full bg-white border border-[#e8eaf0] flex items-center justify-center shadow-sm"
+          className="w-9 h-9 rounded-full bg-white border border-[#e8eaf0] flex items-center justify-center shadow-sm shrink-0"
         >
           <svg
             width="16"
@@ -190,14 +106,14 @@ export default function AlertDetail() {
 
       <div className="px-5 flex flex-col gap-4">
         {/* Title + Verdict */}
-        <div>
-          <h1 className="text-2xl font-bold text-[#0f1230] leading-tight mb-3">
+        <div className="flex flex-col gap-3">
+          <h1 className="text-xl font-bold text-[#0f1230] leading-snug break-words">
             {alert.title || "New match found"}
           </h1>
           <div
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${vc.bg} ${vc.border}`}
+            className={`self-start inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${vc.bg} ${vc.border}`}
           >
-            <span className={`w-2 h-2 rounded-full ${vc.dot}`} />
+            <span className={`w-2 h-2 rounded-full shrink-0 ${vc.dot}`} />
             <span className={`text-sm font-semibold ${vc.color}`}>
               {vc.label}
             </span>
@@ -216,15 +132,12 @@ export default function AlertDetail() {
               {fields.map(([key, val]) => (
                 <div
                   key={key}
-                  className="flex items-center justify-between px-4 py-3"
+                  className="flex items-start justify-between gap-4 px-4 py-3"
                 >
-                  <div className="flex items-center gap-2.5">
-                    {fieldIcons[key] ?? defaultIcon}
-                    <span className="text-sm text-[#6b7280]">
-                      {formatFieldKey(key)}
-                    </span>
-                  </div>
-                  <span className="text-sm font-semibold text-[#0f1230]">
+                  <span className="text-sm text-[#6b7280] shrink-0">
+                    {formatFieldKey(key)}
+                  </span>
+                  <span className="text-sm font-semibold text-[#0f1230] text-right break-words min-w-0">
                     {formatFieldValue(val)}
                   </span>
                 </div>
@@ -237,7 +150,7 @@ export default function AlertDetail() {
         {alert.summary && (
           <div className="bg-white rounded-2xl border border-[#e8eaf0] p-4 shadow-sm">
             <p className="font-semibold text-[#0f1230] text-sm mb-2">Summary</p>
-            <p className="text-[#6b7280] text-sm leading-relaxed">
+            <p className="text-[#6b7280] text-sm leading-relaxed break-words">
               {alert.summary}
             </p>
           </div>
@@ -265,12 +178,37 @@ export default function AlertDetail() {
           Open original post
         </a>
 
-        <button
-          onClick={() => navigate(-1)}
-          className="w-full border border-[#e8eaf0] text-[#6b7280] font-medium py-3.5 rounded-2xl bg-white active:opacity-80 transition-opacity"
-        >
-          Back to alerts
-        </button>
+        {/* Delete */}
+        {!showDeleteConfirm ? (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full border border-red-200 bg-white text-red-500 font-medium py-3.5 rounded-2xl active:opacity-80 transition-opacity"
+          >
+            Delete alert
+          </button>
+        ) : (
+          <div className="bg-white rounded-2xl border border-red-200 p-4 flex flex-col gap-3">
+            <p className="text-sm font-semibold text-[#0f1230]">
+              Delete this alert?
+            </p>
+            <p className="text-xs text-[#6b7280]">This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 border border-[#e8eaf0] bg-white text-[#6b7280] font-medium py-3 rounded-xl active:opacity-80"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-red-500 text-white font-semibold py-3 rounded-xl disabled:opacity-40 active:opacity-90"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
