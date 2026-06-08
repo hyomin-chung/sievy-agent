@@ -291,6 +291,8 @@ export default function WatchList() {
                 ...prev.filter((w) => w.watch_id !== watchId),
               ]),
             );
+            const newAlerts = await alertsApi.list();
+            setAlerts(newAlerts);
             setScanning(null);
             setScanningWatch(null);
             clearInterval(poll);

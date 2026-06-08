@@ -15,10 +15,8 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 
 # Elasticsearch
 ENV = os.getenv("ENV", "development")
-ELASTIC_URL = (
-    os.getenv("ELASTIC_CLOUD_URL")
-    if ENV == "production"
-    else os.getenv("ELASTIC_URL", "http://localhost:9200")
+ELASTIC_URL = os.getenv("ELASTIC_CLOUD_URL") or os.getenv(
+    "ELASTIC_URL", "http://localhost:9200"
 )
 ELASTIC_API_KEY = os.getenv("ELASTIC_API_KEY")
 ELASTIC_MCP_API_KEY = os.getenv("ELASTIC_MCP_API_KEY", "")

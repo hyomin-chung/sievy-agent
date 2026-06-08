@@ -79,7 +79,10 @@ export default function AlertDetail() {
     verdictConfig[alert.verdict as keyof typeof verdictConfig] ??
     verdictConfig.needs_checking;
   const fields = Object.entries(alert.extracted_fields ?? {}).filter(
-    ([, v]) => v !== null && v !== undefined,
+    ([key, v]) =>
+      v !== null &&
+      v !== undefined &&
+      !["post_id", "post_url", "watch_id", "source_url"].includes(key),
   );
 
   return (
