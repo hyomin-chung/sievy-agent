@@ -303,11 +303,6 @@ export default function WatchList() {
           setScanningWatch(null);
         }
       }, 5000);
-      setTimeout(() => {
-        clearInterval(poll);
-        setScanning(null);
-        setScanningWatch(null);
-      }, 120000);
     } catch {
       setScanning(null);
       setScanningWatch(null);

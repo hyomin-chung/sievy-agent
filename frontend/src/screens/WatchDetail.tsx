@@ -151,10 +151,6 @@ export default function WatchDetail() {
           clearInterval(poll);
         }
       }, 5000);
-      setTimeout(() => {
-        clearInterval(poll);
-        setScanning(false);
-      }, 120000);
     } catch {
       setScanning(false);
     }

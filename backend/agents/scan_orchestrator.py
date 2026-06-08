@@ -165,45 +165,48 @@ class ScanOrchestrator:
             instruction=f"""
 You are Sievy's scan orchestrator.
 {len(indexed)} posts have been indexed into Elasticsearch index "{ELASTIC_INDEX_NAME}".
+The "body" field is type semantic_text (ELSER embedding enabled).
 
 Watch criteria:
 {json.dumps(self.criteria, ensure_ascii=False)}
 
-STEP 1: Call the Elasticsearch "search" tool ONCE with these parameters:
+Criteria keywords for search: "{criteria_keywords}"
+
+STEP 1: Call the Elasticsearch "search" tool ONCE.
 - index_pattern: "{ELASTIC_INDEX_NAME}"
-- query:
-{{
-  "query": {{
-    "bool": {{
-      "filter": [
-        {{"term": {{"watch_id": "{self.watch_id}"}}}},
-        {{"terms": {{"post_id": {json.dumps(indexed_post_ids)}}}}}
-      ],
-      "should": [{{"semantic": {{"field": "body", "query": "{criteria_keywords}"}}}}],
-      "minimum_should_match": 1
-    }}
-  }},
-  "size": 20,
-  "_source": ["post_id", "post_url", "body", "title"]
-}}
+- Always include these filters:
+  - term: watch_id = "{self.watch_id}"
+  - terms: post_id in {json.dumps(indexed_post_ids)}
+- For the body field, choose the most appropriate query type based on the criteria:
 
-Do NOT modify watch_id or index_pattern.
-Do NOT call the search tool more than once.
+  Option A — Semantic (meaning-based, cross-language, use when criteria is in different language than content):
+  {{"semantic": {{"field": "body", "query": "{criteria_keywords}"}}}}
 
-STEP 2: For each document returned from STEP 1:
-Read the "body" field and judge it against the watch criteria above.
-- worth_checking: ALL key criteria clearly present and matching in the content
-- needs_checking: related to the criteria but some information is missing or unclear
-- ignore: completely unrelated to the criteria
+  Option B — Match (keyword-based, use when criteria contains specific values that appear literally):
+  {{"match": {{"body": {{"query": "{criteria_keywords}", "operator": "or"}}}}}}
+
+  Option C — Bool combination (use when criteria has both conceptual and exact-match parts):
+  {{"bool": {{"should": [
+    {{"semantic": {{"field": "body", "query": "{criteria_keywords}"}}}},
+    {{"match": {{"body": "{criteria_keywords}"}}}}
+  ], "minimum_should_match": 1}}}}
+
+- size: 20
+- _source: ["post_id", "post_url", "body", "title"]
+- Call the search tool EXACTLY ONCE.
+
+STEP 2: For each result, judge the body against the watch criteria.
+- worth_checking: ALL key criteria clearly present and matching
+- needs_checking: related but some criteria missing or unclear
+- ignore: completely unrelated
 
 STEP 3: For worth_checking and needs_checking ONLY:
 Call create_alert(post_id, post_url, title, verdict, extracted_fields, summary)
-- extracted_fields: ONLY include criteria-relevant fields found in the body.
-  Do NOT include post_id, post_url, watch_id, or any internal metadata.
-  Example for housing: {{"location": "Federal Way", "rent": "$850/month", "utilities": "included"}}
+- extracted_fields: criteria-relevant fields ONLY (e.g. location, rent, move_in_date)
+  Do NOT include post_id, post_url, watch_id, source_url or any internal metadata.
+- summary: one sentence why it matches
 
-Do NOT call fetch_and_index. It is already done.
-Do NOT call the search tool again after STEP 1.
+Do NOT call the search tool more than once.
 """,
             tools=[
                 self.create_alert,
