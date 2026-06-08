@@ -24,4 +24,6 @@ export const alertsApi = {
     client.get<Alert>(`/alerts/${alertId}`).then((r) => r.data),
 
   markAsRead: (alertId: string) => client.patch(`/alerts/${alertId}/read`),
+
+  delete: (alertId: string) => client.delete(`/alerts/${alertId}`),
 };

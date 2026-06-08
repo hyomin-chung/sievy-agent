@@ -1,6 +1,7 @@
 import json
 import uuid
 from dataclasses import dataclass, field
+import asyncio
 
 from google.adk.agents import Agent
 from google.adk.runners import Runner
@@ -126,53 +127,88 @@ class ScanOrchestrator:
         if not new_posts:
             return self.result
 
+        async def fetch_one(post: PostCandidate, retries: int = 2):
+            for attempt in range(retries + 1):
+                try:
+                    return await asyncio.to_thread(
+                        self.fetch_and_index, post.post_id, post.url, post.title
+                    )
+                except Exception as e:
+                    if attempt == retries:
+                        self.result.errors.append(f"{post.post_id}: {str(e)[:100]}")
+                        return {"post_id": post.post_id, "status": "error"}
+                    await asyncio.sleep(2)
+
+        results = await asyncio.gather(*[fetch_one(p) for p in new_posts])
+        indexed = [
+            p for p, r in zip(new_posts, results) if r.get("status") == "indexed"
+        ]
+
+        if not indexed:
+            return self.result
+
         elastic_toolset = MCPToolset(
             connection_params=StreamableHTTPConnectionParams(
                 url=ELASTIC_MCP_URL,
-                headers={"Authorization": f"Bearer {ELASTIC_MCP_API_KEY}"}
+                headers={"Authorization": f"ApiKey {ELASTIC_MCP_API_KEY}"}
                 if ELASTIC_MCP_API_KEY
                 else {},
             )
         )
 
-        posts_json = json.dumps(
-            [{"post_id": p.post_id, "url": p.url, "title": p.title} for p in new_posts],
-            ensure_ascii=False,
-        )
+        criteria_keywords = " ".join(str(v) for v in self.criteria.values() if v)
+        indexed_post_ids = [p.post_id for p in indexed]
 
         agent = Agent(
             name="scan_orchestrator",
             model=GEMINI_MODEL,
             instruction=f"""
-You are Sievy's scan orchestrator. Process new posts and create alerts for matching ones.
+You are Sievy's scan orchestrator.
+{len(indexed)} posts have been indexed into Elasticsearch index "{ELASTIC_INDEX_NAME}".
+The "body" field is type semantic_text (ELSER embedding enabled).
 
 Watch criteria:
 {json.dumps(self.criteria, ensure_ascii=False)}
 
-New posts to process:
-{posts_json}
+Criteria keywords for search: "{criteria_keywords}"
 
-For each post:
-1. Call fetch_and_index(post_id, post_url, title) to fetch content and store in Elasticsearch
-2. If status is "empty", skip to next post
-3. Use the Elasticsearch search tool to search the "{ELASTIC_INDEX_NAME}" index for this post_id
-   and read its content (body field)
-4. Judge whether the content matches the watch criteria
-5. If verdict is "worth_checking" or "needs_checking":
-   Call create_alert(post_id, post_url, title, verdict, extracted_fields, summary)
-6. If verdict is "ignore", move to next post
+STEP 1: Call the Elasticsearch "search" tool ONCE.
+- index_pattern: "{ELASTIC_INDEX_NAME}"
+- Always include these filters:
+  - term: watch_id = "{self.watch_id}"
+  - terms: post_id in {json.dumps(indexed_post_ids)}
+- For the body field, choose the most appropriate query type based on the criteria:
 
-Verdict rules:
-- worth_checking: the post clearly satisfies ALL criteria specified. Every required field must be present in the content and match.
-- needs_checking: the post is relevant to the criteria but some information is missing, vague, or only partially matches.
-- ignore: the post has no meaningful relevance to any of the specified criteria.
+  Option A — Semantic (meaning-based, cross-language, use when criteria is in different language than content):
+  {{"semantic": {{"field": "body", "query": "{criteria_keywords}"}}}}
 
-extracted_fields should contain relevant structured data extracted from the post content.
+  Option B — Match (keyword-based, use when criteria contains specific values that appear literally):
+  {{"match": {{"body": {{"query": "{criteria_keywords}", "operator": "or"}}}}}}
 
-Process all posts before finishing.
+  Option C — Bool combination (use when criteria has both conceptual and exact-match parts):
+  {{"bool": {{"should": [
+    {{"semantic": {{"field": "body", "query": "{criteria_keywords}"}}}},
+    {{"match": {{"body": "{criteria_keywords}"}}}}
+  ], "minimum_should_match": 1}}}}
+
+- size: 20
+- _source: ["post_id", "post_url", "body", "title"]
+- Call the search tool EXACTLY ONCE.
+
+STEP 2: For each result, judge the body against the watch criteria.
+- worth_checking: ALL key criteria clearly present and matching
+- needs_checking: related but some criteria missing or unclear
+- ignore: completely unrelated
+
+STEP 3: For worth_checking and needs_checking ONLY:
+Call create_alert(post_id, post_url, title, verdict, extracted_fields, summary)
+- extracted_fields: criteria-relevant fields ONLY (e.g. location, rent, move_in_date)
+  Do NOT include post_id, post_url, watch_id, source_url or any internal metadata.
+- summary: one sentence why it matches
+
+Do NOT call the search tool more than once.
 """,
             tools=[
-                self.fetch_and_index,
                 self.create_alert,
                 elastic_toolset,
             ],
@@ -193,7 +229,7 @@ Process all posts before finishing.
 
         message = types.Content(
             role="user",
-            parts=[types.Part(text="Start processing the new posts.")],
+            parts=[types.Part(text="Start processing.")],
         )
 
         try:

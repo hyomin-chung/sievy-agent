@@ -46,3 +46,6 @@ class AlertStore:
         docs = self.db.collection(COLLECTION).where("watch_id", "==", watch_id).stream()
         for doc in docs:
             doc.reference.delete()
+
+    def delete(self, alert_id: str) -> None:
+        self.db.collection(COLLECTION).document(alert_id).delete()

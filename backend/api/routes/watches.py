@@ -2,6 +2,9 @@ from datetime import datetime
 from typing import Any
 import logging
 
+from store.elastic_store import ElasticStore
+from config import ELASTIC_INDEX_NAME
+
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from pydantic import BaseModel
 
@@ -80,6 +83,7 @@ async def list_watches_endpoint(
     x_user_id: str = Header(...),
 ) -> list[WatchResponse]:
     watches = _get_watch_store().list_by_user(x_user_id)
+    watches.sort(key=lambda w: w.last_scanned_at or w.created_at, reverse=True)
     return [_to_response(w) for w in watches]
 
 
@@ -103,7 +107,16 @@ async def delete_watch_endpoint(
     watch = store.get(watch_id)
     if not watch or watch.user_id != x_user_id:
         raise HTTPException(status_code=404, detail="Watch not found")
+
+    elastic = ElasticStore()
+    elastic.client.delete_by_query(
+        index=ELASTIC_INDEX_NAME,
+        body={"query": {"term": {"watch_id": watch_id}}},
+        ignore_unavailable=True,
+    )
+
     AlertStore().delete_by_watch(watch_id)
+
     store.delete(watch_id)
 
 
