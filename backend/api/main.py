@@ -11,7 +11,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         FRONTEND_URL,
-        "https://*.vercel.app",
+        "https://sievy-agent.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
