@@ -144,7 +144,17 @@ Return ONLY the JSON object. No explanation, no markdown, no backticks.""",
     def _fallback_filter(self, links: list[str], source_url: str) -> list[str]:
         parsed_source = urlparse(source_url)
         source_path = unquote(parsed_source.path.rstrip("/"))
-        id_params = ["uid", "id", "no", "idx", "seq", "article_id", "post_id", "num"]
+        id_params = [
+            "uid",
+            "id",
+            "no",
+            "idx",
+            "seq",
+            "article_id",
+            "post_id",
+            "num",
+            "parm_bod_uid",
+        ]
         result = []
 
         for link in links:
@@ -236,8 +246,8 @@ Return ONLY the JSON object. No explanation, no markdown, no backticks.""",
                 month = int(parts[-3])
                 day = int(parts[-2])
                 if 2000 <= year <= 2099 and 1 <= month <= 12 and 1 <= day <= 31:
-                    slug = parts[-1]
-                    return hashlib.sha256(slug.encode()).hexdigest()[:16]
+                    dated_path = "/".join(parts[-4:])
+                    return hashlib.sha256(dated_path.encode()).hexdigest()[:16]
             except (ValueError, IndexError):
                 pass
 
