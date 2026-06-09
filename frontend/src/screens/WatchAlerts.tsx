@@ -55,7 +55,7 @@ export default function WatchAlerts() {
   return (
     <div className="min-h-screen bg-[#f7f8fc] pb-10">
       {/* Header */}
-      <div className="px-5 pt-14 pb-4 flex items-center gap-4">
+      <div className="px-5 safe-top pb-4 flex items-center gap-4">
         <button
           onClick={() => navigate(-1)}
           className="w-9 h-9 rounded-full bg-white border border-[#e8eaf0] flex items-center justify-center shadow-sm"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { watchesApi, type Watch } from "../api/watches";
+import { alertsApi } from "../api/alerts";
 import type { ReactNode } from "react";
 
 const categoryIcons: Record<string, ReactNode> = {
@@ -123,6 +124,12 @@ export default function WatchDetail() {
   const [toggling, setToggling] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     if (!watchId) return;
@@ -136,19 +143,33 @@ export default function WatchDetail() {
     if (!watchId) return;
     setScanning(true);
     try {
+      const prevAlerts = await alertsApi.list(watchId);
+      const prevCount = prevAlerts.length;
+
       await watchesApi.scan(watchId);
       const beforeTime = watch?.last_scanned_at
         ? new Date(watch.last_scanned_at).getTime()
         : 0;
+
       const poll = setInterval(async () => {
-        const updated = await watchesApi.get(watchId);
-        const updatedTime = updated.last_scanned_at
-          ? new Date(updated.last_scanned_at).getTime()
-          : 0;
-        if (updatedTime > beforeTime) {
-          setWatch(updated);
-          setScanning(false);
+        try {
+          const updated = await watchesApi.get(watchId);
+          const updatedTime = updated.last_scanned_at
+            ? new Date(updated.last_scanned_at).getTime()
+            : 0;
+          if (updatedTime > beforeTime) {
+            setWatch(updated);
+            setScanning(false);
+            clearInterval(poll);
+
+            const newAlerts = await alertsApi.list(watchId);
+            if (newAlerts.length === prevCount) {
+              showToast("All clear — nothing new matched your criteria");
+            }
+          }
+        } catch {
           clearInterval(poll);
+          setScanning(false);
         }
       }, 5000);
     } catch {
@@ -197,6 +218,15 @@ export default function WatchDetail() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] pb-10">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+          <div className="bg-[#0f1230] text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap">
+            {toast}
+          </div>
+        </div>
+      )}
+
       {/* Scan loading modal */}
       {scanning && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -219,7 +249,7 @@ export default function WatchDetail() {
       )}
 
       {/* Header */}
-      <div className="px-5 pt-14 pb-4 flex items-center gap-4">
+      <div className="px-5 safe-top pb-4 flex items-center gap-4">
         <button
           onClick={() => navigate("/watches")}
           className="w-9 h-9 rounded-full bg-white border border-[#e8eaf0] flex items-center justify-center shadow-sm"
@@ -271,7 +301,6 @@ export default function WatchDetail() {
             </div>
           </div>
 
-          {/* Criteria */}
           <div className="border-t border-[#f0f2f8] divide-y divide-[#f0f2f8]">
             {Object.entries(watch.criteria).map(([key, val]) => (
               <div

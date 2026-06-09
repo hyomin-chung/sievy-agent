@@ -1,5 +1,4 @@
 from connectors.firecrawl_connector import FirecrawlConnector
-from connectors.reddit import RedditConnector
 from feed.feed_detector import FeedDetector
 from store.watch_store import WatchStore
 from schemas.watch import Watch
@@ -7,8 +6,6 @@ from agents.scan_orchestrator import ScanOrchestrator, ScanResult
 
 
 def _get_connector(source_url: str):
-    if "reddit.com" in source_url:
-        return RedditConnector()
     return FirecrawlConnector()
 
 

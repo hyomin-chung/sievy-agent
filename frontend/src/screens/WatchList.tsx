@@ -128,7 +128,6 @@ function WatchCard({
 
   return (
     <div className="bg-white rounded-2xl border border-[#e8eaf0] shadow-sm overflow-hidden">
-      {/* Top area → WatchDetail */}
       <div
         className="p-4 active:bg-[#f7f8fc] transition-colors cursor-pointer"
         onClick={() => navigate(`/watches/${watch.watch_id}`)}
@@ -183,7 +182,6 @@ function WatchCard({
           </button>
         </div>
 
-        {/* Criteria tags: only render when non-description fields exist */}
         {criteriaFields.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {criteriaFields.map(([key, val]) => (
@@ -198,7 +196,6 @@ function WatchCard({
         )}
       </div>
 
-      {/* Bottom area → WatchAlerts */}
       <button
         onClick={() => navigate(`/watches/${watch.watch_id}/alerts`)}
         className="w-full flex items-center gap-2 px-4 py-3 border-t border-[#f0f2f8] active:bg-[#f7f8fc] transition-colors"
@@ -252,6 +249,12 @@ export default function WatchList() {
   const [scanningWatch, setScanningWatch] = useState<Watch | null>(null);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     Promise.all([watchesApi.list(), alertsApi.list()])
@@ -274,10 +277,14 @@ export default function WatchList() {
     setScanning(watchId);
     setScanningWatch(target);
     try {
+      const prevAlerts = await alertsApi.list(watchId);
+      const prevCount = prevAlerts.length;
+
       await watchesApi.scan(watchId);
       const beforeTime = target.last_scanned_at
         ? new Date(target.last_scanned_at).getTime()
         : 0;
+
       const poll = setInterval(async () => {
         try {
           const updated = await watchesApi.get(watchId);
@@ -296,6 +303,13 @@ export default function WatchList() {
             setScanning(null);
             setScanningWatch(null);
             clearInterval(poll);
+
+            const newCount = newAlerts.filter(
+              (a) => a.watch_id === watchId,
+            ).length;
+            if (newCount === prevCount) {
+              showToast("All clear — nothing new matched your criteria");
+            }
           }
         } catch {
           clearInterval(poll);
@@ -315,6 +329,15 @@ export default function WatchList() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+          <div className="bg-[#0f1230] text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap">
+            {toast}
+          </div>
+        </div>
+      )}
 
       {/* Scan loading modal */}
       {scanningWatch && (
@@ -341,7 +364,7 @@ export default function WatchList() {
       )}
 
       {/* Header */}
-      <div className="px-5 pt-14 pb-4">
+      <div className="px-5 safe-top pb-4">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold text-[#0f1230] tracking-tight">
