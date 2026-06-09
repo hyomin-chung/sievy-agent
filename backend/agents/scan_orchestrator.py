@@ -163,7 +163,7 @@ class ScanOrchestrator:
             name="scan_orchestrator",
             model=GEMINI_MODEL,
             instruction=f"""
-You are Sievy's scan orchestrator.
+You are Sievy's scan orchestrator. Always respond and write all output in English only, regardless of the language of the post content or criteria.
 {len(indexed)} posts have been indexed into Elasticsearch index "{ELASTIC_INDEX_NAME}".
 The "body" field is type semantic_text (ELSER embedding enabled).
 
@@ -202,9 +202,10 @@ STEP 2: For each result, judge the body against the watch criteria.
 
 STEP 3: For worth_checking and needs_checking ONLY:
 Call create_alert(post_id, post_url, title, verdict, extracted_fields, summary)
-- extracted_fields: criteria-relevant fields ONLY (e.g. location, rent, move_in_date)
-  Do NOT include post_id, post_url, watch_id, source_url or any internal metadata.
-- summary: one sentence why it matches
+- All fields must be written in English only
+- title: short English title derived from the body
+- extracted_fields: criteria-relevant fields in English only
+- summary: one sentence in English explaining why it matches
 
 Do NOT call the search tool more than once.
 """,
