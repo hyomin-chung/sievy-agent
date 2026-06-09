@@ -3,6 +3,28 @@ from feed.feed_detector import FeedDetector
 from store.watch_store import WatchStore
 from schemas.watch import Watch
 from agents.scan_orchestrator import ScanOrchestrator, ScanResult
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+scheduler = AsyncIOScheduler()
+
+
+async def run_all_scans():
+    watch_store = WatchStore()
+    watches = watch_store.list_all_active()
+    for watch in watches:
+        try:
+            await scan(watch.watch_id)
+        except Exception as e:
+            print(f"Scheduled scan failed for {watch.watch_id}: {e}")
+
+
+scheduler.add_job(
+    run_all_scans,
+    trigger=IntervalTrigger(hours=1),
+    id="hourly_scan",
+    replace_existing=True,
+)
 
 
 def _get_connector(source_url: str):

@@ -83,7 +83,6 @@ Sievy works with any public listing page where individual post links appear in t
 | Keimyung University      | https://www.kmu.ac.kr/uni/main/page.jsp?mnu_uid=144     | Scholarships/Programs |
 | JYP entertainment        | https://audition.jype.com/audition/auditions            | Audition              |
 | Linkareer                | https://linkareer.com/list/activity                     | Jobs/Recruiting       |
-| Seattle Public Library   | https://www.spl.org/event-calendar                      | Events                |
 
 ### Likely to work
 

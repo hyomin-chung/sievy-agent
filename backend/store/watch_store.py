@@ -41,3 +41,7 @@ class WatchStore:
 
     def delete(self, watch_id: str) -> None:
         self.db.collection(COLLECTION).document(watch_id).delete()
+
+    def list_all_active(self) -> list[Watch]:
+        docs = self.db.collection(COLLECTION).where("status", "==", "active").stream()
+        return [self._to_watch(doc) for doc in docs]
