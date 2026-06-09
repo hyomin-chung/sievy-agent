@@ -3,12 +3,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import watches, alerts
 from config import FRONTEND_URL
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
+import asyncio
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-scheduler = AsyncIOScheduler()
+scheduler = BackgroundScheduler()
 
 
 @asynccontextmanager
@@ -16,15 +17,20 @@ async def lifespan(app: FastAPI):
     from agents.pipeline import scan
     from store.watch_store import WatchStore
 
-    async def run_all_scans():
-        watch_store = WatchStore()
-        watches_list = watch_store.list_all_active()
-        for watch in watches_list:
-            try:
-                await scan(watch.watch_id)
-                logging.info(f"Scheduled scan completed: {watch.watch_id}")
-            except Exception as e:
-                logging.error(f"Scheduled scan failed for {watch.watch_id}: {e}")
+    def run_all_scans():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            watch_store = WatchStore()
+            watches_list = watch_store.list_all_active()
+            for watch in watches_list:
+                try:
+                    loop.run_until_complete(scan(watch.watch_id))
+                    logging.info(f"Scheduled scan completed: {watch.watch_id}")
+                except Exception as e:
+                    logging.error(f"Scheduled scan failed for {watch.watch_id}: {e}")
+        finally:
+            loop.close()
 
     scheduler.add_job(
         run_all_scans,
@@ -34,7 +40,7 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
     )
     scheduler.start()
-    logging.info("Scheduler started: hourly scan enabled")
+    logging.info("Scheduler started")
 
     yield
 
