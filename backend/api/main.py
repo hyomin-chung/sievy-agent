@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import watches, alerts
@@ -38,9 +39,10 @@ async def lifespan(app: FastAPI):
         hours=1,
         id="hourly_scan",
         replace_existing=True,
+        next_run_time=datetime.now() + timedelta(hours=1),
     )
     scheduler.start()
-    logging.info("Scheduler started")
+    logging.info("Scheduler started: first scan in 1 hour")
 
     yield
 
