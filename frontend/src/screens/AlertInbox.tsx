@@ -56,7 +56,7 @@ export default function AlertInbox() {
   return (
     <div className="min-h-screen bg-[#f7f8fc] pb-24">
       {/* Header */}
-      <div className="px-5 pt-14 pb-4">
+      <div className="px-5 safe-top pb-4">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-3xl font-bold text-[#0f1230] tracking-tight">
             Sievy

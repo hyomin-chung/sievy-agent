@@ -26,9 +26,6 @@ ELASTIC_MCP_URL = os.getenv("ELASTIC_MCP_URL", "http://elastic-mcp:8080/mcp")
 # Firecrawl
 FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")
 
-# Feed
-LISTING_LIMIT = int(os.getenv("LISTING_LIMIT", "25"))
-
 # App
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")

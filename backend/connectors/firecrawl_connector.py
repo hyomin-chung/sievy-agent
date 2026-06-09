@@ -214,11 +214,34 @@ Return ONLY the JSON object. No explanation, no markdown, no backticks.""",
         parsed = urlparse(url)
         params = parse_qs(parsed.query)
 
-        for key in ["uid", "id", "no", "idx", "seq", "article_id", "post_id", "num"]:
+        for key in [
+            "uid",
+            "id",
+            "no",
+            "idx",
+            "seq",
+            "article_id",
+            "post_id",
+            "num",
+            "parm_bod_uid",
+        ]:
             if key in params:
                 return params[key][0]
 
-        for part in reversed(parsed.path.rstrip("/").split("/")):
+        parts = [p for p in parsed.path.rstrip("/").split("/") if p]
+
+        if len(parts) >= 4:
+            try:
+                year = int(parts[-4])
+                month = int(parts[-3])
+                day = int(parts[-2])
+                if 2000 <= year <= 2099 and 1 <= month <= 12 and 1 <= day <= 31:
+                    slug = parts[-1]
+                    return hashlib.sha256(slug.encode()).hexdigest()[:16]
+            except (ValueError, IndexError):
+                pass
+
+        for part in reversed(parts):
             clean = re.sub(r"\.(html?|php|asp|jsp)$", "", part)
             if clean.isdigit():
                 return clean
